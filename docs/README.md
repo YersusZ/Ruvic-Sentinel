@@ -3,7 +3,7 @@
 Índice de este directorio. El README de la raíz describe cómo correr agente y
 servidor; aquí está el producto y las integraciones Robin.
 
-Guía de **catálogo Ruvic** (ocho secciones, bilingüe): [`index.html`](index.html) + [`../manifest.json`](../manifest.json).
+Guía de **catálogo Ruvic** (ocho secciones, bilingüe): [`index.html`](index.html) + [`../manifest.json`](../manifest.json) (contrato del conector OpenHands: `library`, `auth_modes`, `env_prefix`). Entregable de integración: [`../CONNECTOR.md`](../CONNECTOR.md).
 
 Product docs (Mintlify) live in `ruvic-documentation`, **Ruvic Sentinel**:
 

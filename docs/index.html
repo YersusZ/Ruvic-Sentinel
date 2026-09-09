@@ -28,7 +28,7 @@
     <section>
       <h2 id="que-es" data-i18n="section.que_es">¿Qué es y para qué sirve?</h2>
       <p data-i18n="section.que_es.body">Ruvic Sentinel es el agente por host del repo ws_client. En cada máquina corre como robin-client-monitor. El servidor de control de Ruvic le habla por WebSocket: envía herramientas bajo demanda y recibe resultados. La telemetría se guarda en la API de logs y un reporte la grafica.</p>
-      <p data-i18n="section.que_es.not_canvas">No es el agente de código de Agent Canvas ni un conector OAuth tipo Gmail. Es un proceso instalado en Linux, Windows o macOS que se enrola una vez y queda como servicio.</p>
+      <p data-i18n="section.que_es.not_canvas">El binario no es el agente de código de Agent Canvas. En OpenHands, Settings → Conectores → Ruvic Sentinel es el cliente REST (JWT + URL del control) para listar hosts y ejecutar tools; no sustituye a robin-client-monitor.</p>
       <p data-i18n="section.que_es.planes">Hay dos planos: control (wss://…/ws/colsoft-tools: handshake RSA, comandos firmados Ed25519) y datos (HTTPS OTLP /v1/logs). Las series de CPU/RAM no van por el WebSocket.</p>
     </section>
 
@@ -91,6 +91,7 @@
     <section>
       <h2 id="configuracion-ruvic" data-i18n="section.configuracion_ruvic">Configuración en Ruvic</h2>
       <p data-i18n="ruvic.intro">En Ruvic no pegas PEMs. Generas el token con el JWT del dueño y dejas que --enroll escriba enrollment/.</p>
+      <p data-i18n="ruvic.connector">En OpenHands: Settings → Conectores → Ruvic Sentinel. Pega la URL HTTPS del control (RUVIC_SENTINEL_BASE_URL, sin barra final) y el JWT Robin (RUVIC_SENTINEL_TOKEN). Probar conexión llama GET /api/agents; GET /health es opcional si el puerto de control exige mTLS.</p>
       <ol class="ruvic-steps">
         <li><strong data-i18n="ruvic.s1.label">Generar token:</strong> <span data-i18n="ruvic.s1.body">POST https://&lt;instancia&gt;/api/enrollment-tokens con Authorization: Bearer &lt;jwt&gt;. Respuesta: token enr_…, expires_at, user_id.</span></li>
         <li><strong data-i18n="ruvic.s2.label">Enrolar el host:</strong> <span data-i18n="ruvic.s2.body">--enroll-server debe ser la URL pública HTTPS del control. El bundle guarda wss://…/ws/colsoft-tools.</span></li>
@@ -101,7 +102,7 @@ Authorization: Bearer &lt;jwt&gt;
 
 POST /api/agents/&lt;agent_id&gt;/execute
 Authorization: Bearer &lt;jwt&gt;
-{"command": "health_check", "params": {}}</code></pre>
+{"tool": "health_check", "params": {}}</code></pre>
     </section>
 
     <section>
@@ -155,7 +156,7 @@ Authorization: Bearer &lt;jwt&gt;
         guide_title: "Ruvic Sentinel",
         "section.que_es": "¿Qué es y para qué sirve?",
         "section.que_es.body": "Ruvic Sentinel es el agente por host del repo ws_client. En cada máquina corre como robin-client-monitor. El servidor de control de Ruvic le habla por WebSocket: envía herramientas bajo demanda y recibe resultados. La telemetría se guarda en la API de logs y un reporte la grafica.",
-        "section.que_es.not_canvas": "No es el agente de código de Agent Canvas ni un conector OAuth tipo Gmail. Es un proceso instalado en Linux, Windows o macOS que se enrola una vez y queda como servicio.",
+        "section.que_es.not_canvas": "El binario no es el agente de código de Agent Canvas. En OpenHands, Settings → Conectores → Ruvic Sentinel es el cliente REST (JWT + URL del control) para listar hosts y ejecutar tools; no sustituye a robin-client-monitor.",
         "section.que_es.planes": "Hay dos planos: control (wss://…/ws/colsoft-tools: handshake RSA, comandos firmados Ed25519) y datos (HTTPS OTLP /v1/logs). Las series de CPU/RAM no van por el WebSocket.",
         "section.prerrequisitos": "Prerrequisitos",
         "prereq.1": "Binario robin-client-monitor (Linux/macOS) o robin-client-monitor.exe (Windows), más config_client.json sin llaves.",
@@ -185,6 +186,7 @@ Authorization: Bearer &lt;jwt&gt;
         "perm.signing.why": "El host verifica command_request con certs/signing.pub. Si no coincide con SERVER_SIGNING_KEY, los comandos se rechazan.",
         "section.configuracion_ruvic": "Configuración en Ruvic",
         "ruvic.intro": "En Ruvic no pegas PEMs. Generas el token con el JWT del dueño y dejas que --enroll escriba enrollment/.",
+        "ruvic.connector": "En OpenHands: Settings → Conectores → Ruvic Sentinel. Pega la URL HTTPS del control (RUVIC_SENTINEL_BASE_URL, sin barra final) y el JWT Robin (RUVIC_SENTINEL_TOKEN). Probar conexión llama GET /api/agents; GET /health es opcional si el puerto de control exige mTLS.",
         "ruvic.s1.label": "Generar token:",
         "ruvic.s1.body": "POST https://<instancia>/api/enrollment-tokens con Authorization: Bearer <jwt>. Respuesta: token enr_…, expires_at, user_id.",
         "ruvic.s2.label": "Enrolar el host:",
@@ -233,7 +235,7 @@ Authorization: Bearer &lt;jwt&gt;
         guide_title: "Ruvic Sentinel",
         "section.que_es": "What it is and what it’s for",
         "section.que_es.body": "Ruvic Sentinel is the per-host agent from the ws_client repo. On each machine it runs as robin-client-monitor. Ruvic’s control server talks to it over WebSocket: it sends on-demand tools and receives results. Telemetry is stored in the logs API and a report charts it.",
-        "section.que_es.not_canvas": "It is not the Agent Canvas coding agent, and not an OAuth connector like Gmail. It is a process on Linux, Windows, or macOS that you enroll once and run as a service.",
+        "section.que_es.not_canvas": "The binary is not the Agent Canvas coding agent. In OpenHands, Settings → Connectors → Ruvic Sentinel is the REST client (JWT + control-plane URL) to list hosts and run tools; it does not replace robin-client-monitor.",
         "section.que_es.planes": "There are two planes: control (wss://…/ws/colsoft-tools: RSA handshake, Ed25519-signed commands) and data (HTTPS OTLP /v1/logs). CPU/RAM time series do not go over the WebSocket.",
         "section.prerrequisitos": "Prerequisites",
         "prereq.1": "The robin-client-monitor binary (Linux/macOS) or robin-client-monitor.exe (Windows), plus a config_client.json with no keys.",
@@ -263,6 +265,7 @@ Authorization: Bearer &lt;jwt&gt;
         "perm.signing.why": "The host verifies command_request with certs/signing.pub. If it does not match SERVER_SIGNING_KEY, commands are rejected.",
         "section.configuracion_ruvic": "Configuration in Ruvic",
         "ruvic.intro": "Do not paste PEMs in Ruvic. Mint the token with the owner JWT and let --enroll write enrollment/.",
+        "ruvic.connector": "In OpenHands: Settings → Connectors → Ruvic Sentinel. Paste the HTTPS control URL (RUVIC_SENTINEL_BASE_URL, no trailing slash) and the Robin JWT (RUVIC_SENTINEL_TOKEN). Test connection calls GET /api/agents; GET /health is optional if the control port requires mTLS.",
         "ruvic.s1.label": "Mint a token:",
         "ruvic.s1.body": "POST https://<instance>/api/enrollment-tokens with Authorization: Bearer <jwt>. Response: enr_… token, expires_at, user_id.",
         "ruvic.s2.label": "Enroll the host:",

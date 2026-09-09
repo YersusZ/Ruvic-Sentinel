@@ -1,0 +1,6 @@
+Metadata-Version: 2.4
+Name: ruvic-sentinel-connector
+Version: 1.0.0
+Summary: Cliente HTTP de solo API para el plano de control de Ruvic Sentinel
+Requires-Python: >=3.10
+Requires-Dist: httpx<1.0,>=0.27

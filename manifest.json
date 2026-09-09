@@ -2,24 +2,79 @@
   "id": "ruvic_sentinel",
   "name": "Ruvic Sentinel",
   "name_en": "Ruvic Sentinel",
-  "description": "Agente en cada host (robin-client-monitor): enrollment, comandos firmados por WebSocket y telemetría para reportes.",
-  "description_en": "Per-host agent (robin-client-monitor): enrollment, signed WebSocket commands, and telemetry for reports.",
+  "version": "1.0.0",
+  "description": "Plano de control de agentes de endpoint: listar hosts, ejecutar tools firmadas y emitir tokens de enrollment.",
+  "description_en": "Endpoint-agent control plane: list hosts, run signed tools, and mint enrollment tokens.",
   "category": "cybersecurity",
   "category_en": "cybersecurity",
   "keywords": [
     "Ruvic Sentinel",
     "ruvic_sentinel",
-    "ws client",
-    "ws_client",
     "endpoint",
     "agente",
     "agent",
     "host",
     "websocket",
     "enrollment",
-    "telemetria",
     "telemetry",
-    "robin-client-monitor",
-    "otlp"
-  ]
+    "robin-client-monitor"
+  ],
+  "icon": "icon.svg",
+  "library": {
+    "package": "ruvic-sentinel-connector",
+    "install": "pip install git+https://github.com/YersusZ/Ruvic-Sentinel.git#subdirectory=lib",
+    "import_name": "ruvic_sentinel_connector"
+  },
+  "auth_modes": [
+    {
+      "id": "jwt",
+      "label": "JWT Robin (Bearer)",
+      "fields": [
+        {
+          "key": "base_url",
+          "label": "URL del plano de control",
+          "type": "text",
+          "required": true,
+          "placeholder": "https://sentinel.ejemplo.com",
+          "help_text": "Origen HTTPS del servidor Sentinel, sin barra final. No uses 127.0.0.1 en producción."
+        },
+        {
+          "key": "token",
+          "label": "JWT Robin",
+          "type": "password",
+          "secret": true,
+          "required": true,
+          "help_text": "Bearer para GET /api/agents y POST /api/agents/{id}/execute. No es el token enr_… de enrollment."
+        },
+        {
+          "key": "timeout",
+          "label": "Timeout HTTP (segundos)",
+          "type": "number",
+          "required": false,
+          "default": "30"
+        },
+        {
+          "key": "verify_tls",
+          "label": "Verificar certificado TLS",
+          "type": "boolean",
+          "required": false,
+          "default": "true",
+          "help_text": "Pon false solo en lab con certificados autofirmados."
+        }
+      ]
+    }
+  ],
+  "env_prefix": "RUVIC_SENTINEL_",
+  "operations": [
+    "agents.list",
+    "agents.get",
+    "agents.execute",
+    "agents.commands",
+    "enrollment.token"
+  ],
+  "test_connection": true,
+  "docs": {
+    "skill": "SKILL.md",
+    "permissions_note": "El JWT debe poder listar agentes del dueño y, para execute, cumplir ROBIN_JWT_EXECUTE_ROLES. El enrollment usa POST /api/enrollment-tokens con el mismo Bearer."
+  }
 }

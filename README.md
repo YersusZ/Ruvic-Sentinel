@@ -8,6 +8,36 @@ Requerimientos: SRS v1.0 (agentes de endpoint). Estado:
 [`docs/checklist-pendiente.md`](docs/checklist-pendiente.md). Índice:
 [`docs/README.md`](docs/README.md).
 
+## Conector OpenHands (Settings → Conectores)
+
+Este repo incluye el **paquete de conector** (`manifest.json`, `SKILL.md`,
+`lib/`, `test_connection.py`) para que el agente de OpenHands hable con el
+plano de control por REST. No sustituye al binario `robin-client-monitor`.
+Guía corta de integración: [`CONNECTOR.md`](CONNECTOR.md).
+
+| Entregable | Rol |
+|---|---|
+| `manifest.json` | Formulario (JWT + URL del control) |
+| `lib/ruvic_sentinel_connector/` | Cliente HTTP (`SentinelClient`) |
+| `SKILL.md` | Manual del LLM (`name: ruvic-sentinel`) |
+| `test_connection.py` | Botón «Probar conexión» |
+
+Instalar la librería en un venv:
+
+```bash
+pip install -e ./lib
+export RUVIC_SENTINEL_BASE_URL=https://sentinel.ejemplo.com
+export RUVIC_SENTINEL_TOKEN=eyJ…
+python test_connection.py
+```
+
+Integración en el fork OpenHands:
+
+```bash
+python -m scripts.integrate_connector /ruta/conector-ruvic_sentinel.zip
+```
+
+
 ```
 Ruvic / este servidor
   REST /api/*  + JWT Robin (RS256)     → comandos, cola, GET /api/logs
