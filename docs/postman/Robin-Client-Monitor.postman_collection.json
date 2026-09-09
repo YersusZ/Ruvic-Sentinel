@@ -1,0 +1,2094 @@
+{
+  "info": {
+    "name": "Robin Client Monitor — lab",
+    "description": "Pruebas de las tools Fase 3 (seguridad), Fase 4 (Windows + Linux) y observabilidad.\n\n**Importar:** Postman → Import → este JSON.\n**Lab:** `base_url=http://127.0.0.1:8000`, deja `jwt` vacío (ROBIN_JWT_REQUIRED=0).\n**Prod:** pega el JWT Robin en `jwt`.\n\n1. Nuevo agente: **Mint enrollment token** (JWT del dueño) → **Enroll agent** → guarda respuesta en `enrollment/` del host.\n2. Arrancá el agente con esa identidad.\n3. Corré **Listar agentes** y copiá `agent_id` (p.ej. PC_Linux_Test — no `{client_name}-{uuid}`).\n4. Windows: `windows_*` dan UNSUPPORTED en Linux. Linux: `linux_*` dan UNSUPPORTED en Windows.\n5. Remediación Alto/Crítico: `ALLOW_HIGH_RISK_COMMANDS` en el backend (= DEFAULT_DISABLED) **y** `policy.allow_high_risk` + `allowed_commands` en el agente. Servicios: solo allowlist del agente.\nIdentidad = `data.agent_id`, nunca el UUID `agentId` de RobinLogs.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://127.0.0.1:8000"
+    },
+    {
+      "key": "agent_id",
+      "value": "PC_Linux_Test"
+    },
+    {
+      "key": "jwt",
+      "value": ""
+    },
+    {
+      "key": "message_id",
+      "value": ""
+    },
+    {
+      "key": "manager_host",
+      "value": "127.0.0.1"
+    },
+    {
+      "key": "enroll_token",
+      "value": ""
+    },
+    {
+      "key": "enroll_client_name",
+      "value": "PC_New_Agent"
+    }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{jwt}}",
+        "type": "string"
+      }
+    ]
+  },
+  "item": [
+    {
+      "name": "0. Setup",
+      "description": "Nuevo agente: Enroll agent (token + JWT dueño) → identidad en el host. Luego Listar agentes para {{agent_id}}.",
+      "item": [
+        {
+          "name": "Health (sin auth)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/health",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "health"
+              ]
+            },
+            "description": "Healthcheck. No usa JWT.",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Mint enrollment token (JWT)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/enrollment-tokens",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "enrollment-tokens"
+              ]
+            },
+            "description": "Emite un token de un solo uso ligado al `sub` del JWT (OpenHands/Ruvic). No hace falta tocar ENROLLMENT_TOKENS en el server.\n\nProd: pega el Bearer del usuario en `jwt`. El test guarda `enroll_token` automáticamente.\n\nFlujo: Mint → Enroll agent (Bearer opcional si el token fue emitido con JWT) → arrancar agente con enrollment/."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('mint OK', () => pm.expect(pm.response.code).to.eql(200));",
+                  "const data = pm.response.json();",
+                  "if (data && data.token) {",
+                  "  pm.collectionVariables.set('enroll_token', data.token);",
+                  "  console.log('enroll_token =', data.token);",
+                  "  console.log('expires_at =', data.expires_at);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Enroll agent (Bearer + token)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/enroll",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "enroll"
+              ]
+            },
+            "description": "Provisiona identidad persistente (RF-CORE-01/02).\n\n**Recomendado:** primero **Mint enrollment token** con el JWT del dueño; usa ese `enroll_token` aquí (Bearer opcional — el token ya trae user_id).\n\n**Legacy:** token en ENROLLMENT_TOKENS del server + Bearer del dueño.\n\nRespuesta → `enrollment/identity.json` en el host (no config_client.json). Variables: `enroll_token`, `enroll_client_name`.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"{{enroll_token}}\",\n  \"client_name\": \"{{enroll_client_name}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('enrollment OK', () => pm.expect(pm.response.code).to.eql(200));",
+                  "const data = pm.response.json();",
+                  "if (data && data.agent_id) {",
+                  "  pm.collectionVariables.set('agent_id', data.agent_id);",
+                  "  console.log('agent_id =', data.agent_id);",
+                  "  console.log('Guarda la respuesta completa en enrollment/identity.json del host.');",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Listar agentes (guarda agent_id)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/agents",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "agents"
+              ]
+            },
+            "description": "Copia el agent_id del primero conectado a la variable de colección. Lab: JWT vacío. Prod: pega el Bearer en jwt."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const data = pm.response.json();",
+                  "pm.test('lista agentes', () => pm.expect(pm.response.code).to.be.oneOf([200]));",
+                  "if (Array.isArray(data) && data.length) {",
+                  "  const id = data[0].agent_id;",
+                  "  pm.collectionVariables.set('agent_id', id);",
+                  "  console.log('agent_id =', id);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Estado logger + JWT",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/system/logger-status",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "system",
+                "logger-status"
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "1. Seguridad (Fase 3) — on-demand",
+      "description": "Monitores pueden estar off; estas tools igual corren. Reiniciá el agente si cambiaste config security.*.",
+      "item": [
+        {
+          "name": "FIM scan",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/agents/{{agent_id}}/execute",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "agents",
+                "{{agent_id}}",
+                "execute"
+              ]
+            },
+            "description": "RF-SEC-01. En Windows usá paths tipo C:\\\\Windows\\\\System32\\\\drivers\\\\etc\\\\hosts",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tool\": \"fim_scan\",\n  \"params\": {\n    \"paths\": [\n      \"/etc/passwd\",\n      \"/etc/hosts\"\n    ]\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Persistencia",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/agents/{{agent_id}}/execute",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "agents",
+                "{{agent_id}}",
+                "execute"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tool\": \"persistence_scan\",\n  \"params\": {}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Auth audit",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/agents/{{agent_id}}/execute",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "agents",
+                "{{agent_id}}",
+                "execute"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tool\": \"auth_audit\",\n  \"params\": {\n    \"max_entries\": 50\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Detection scan (MITRE)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/agents/{{agent_id}}/execute",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "agents",
+                "{{agent_id}}",
+                "execute"
+              ]
+            },
+            "description": "SEC-001 PowerShell -enc, SEC-002 curl|sh, SEC-003 exec en /tmp",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tool\": \"detection_scan\",\n  \"params\": {}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "CIS score",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/agents/{{agent_id}}/execute",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "agents",
+                "{{agent_id}}",
+                "execute"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tool\": \"cis_score\",\n  \"params\": {}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "DNS monitor",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/agents/{{agent_id}}/execute",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "agents",
+                "{{agent_id}}",
+                "execute"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tool\": \"dns_monitor\",\n  \"params\": {}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Rootkit check",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/agents/{{agent_id}}/execute",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "agents",
+                "{{agent_id}}",
+                "execute"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tool\": \"rootkit_check\",\n  \"params\": {}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "CVE inventory (insumo)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/agents/{{agent_id}}/execute",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "agents",
+                "{{agent_id}}",
+                "execute"
+              ]
+            },
+            "description": "El cruce es en el backend (carpeta 4. CVE).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tool\": \"cve_inventory\",\n  \"params\": {}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "2. Windows (Fase 4)",
+      "description": "En Linux/macOS responden UNSUPPORTED. WMI allowlist: Win32_OperatingSystem, ComputerSystem, BIOS, Processor, LogicalDisk, Process, Service, StartupCommand, QuickFixEngineering.",
+      "item": [
+        {
+          "name": "Event Log Security",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/agents/{{agent_id}}/execute",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "agents",
+                "{{agent_id}}",
+                "execute"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tool\": \"windows_event_log\",\n  \"params\": {\n    \"channel\": \"Security\",\n    \"max_events\": 50\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Event Log bundle",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/agents/{{agent_id}}/execute",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "agents",
+                "{{agent_id}}",
+                "execute"
+              ]
+            },
+            "description": "Lee System/Application/Security/Setup/ForwardedEvents + PowerShell/Defender/IIS",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tool\": \"windows_event_log\",\n  \"params\": {\n    \"bundle\": true,\n    \"max_events\": 20\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "ETW providers",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/agents/{{agent_id}}/execute",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "agents",
+                "{{agent_id}}",
+                "execute"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tool\": \"windows_etw\",\n  \"params\": {\n    \"max_providers\": 80\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Autoruns",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/agents/{{agent_id}}/execute",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "agents",
+                "{{agent_id}}",
+                "execute"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tool\": \"windows_autoruns\",\n  \"params\": {}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "WMI Win32_OperatingSystem",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/agents/{{agent_id}}/execute",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "agents",
+                "{{agent_id}}",
+                "execute"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tool\": \"windows_wmi\",\n  \"params\": {\n    \"class_name\": \"Win32_OperatingSystem\",\n    \"max_rows\": 20\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "WMI Win32_Service",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/agents/{{agent_id}}/execute",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "agents",
+                "{{agent_id}}",
+                "execute"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tool\": \"windows_wmi\",\n  \"params\": {\n    \"class_name\": \"Win32_Service\",\n    \"max_rows\": 40\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Scheduled tasks",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/agents/{{agent_id}}/execute",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "agents",
+                "{{agent_id}}",
+                "execute"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tool\": \"windows_scheduled_tasks\",\n  \"params\": {}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Sysmon",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/agents/{{agent_id}}/execute",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "agents",
+                "{{agent_id}}",
+                "execute"
+              ]
+            },
+            "description": "Idle (OK) si Sysmon no está instalado",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tool\": \"windows_sysmon\",\n  \"params\": {}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Defender (solo lectura)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/agents/{{agent_id}}/execute",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "agents",
+                "{{agent_id}}",
+                "execute"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tool\": \"windows_defender\",\n  \"params\": {}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "3. Linux (Fase 4)",
+      "description": "En Windows responden UNSUPPORTED. Monitores linux.* off por defecto.",
+      "item": [
+        {
+          "name": "eBPF (tracepoints)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/agents/{{agent_id}}/execute",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "agents",
+                "{{agent_id}}",
+                "execute"
+              ]
+            },
+            "description": "RF-LIN-01 snapshot bpftool/tracefs",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tool\": \"linux_ebpf\",\n  \"params\": {\n    \"max_programs\": 40\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "auditd",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/agents/{{agent_id}}/execute",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "agents",
+                "{{agent_id}}",
+                "execute"
+              ]
+            },
+            "description": "RF-LIN-02",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tool\": \"linux_auditd\",\n  \"params\": {\n    \"max_events\": 40\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "syslog /var/log",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/agents/{{agent_id}}/execute",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "agents",
+                "{{agent_id}}",
+                "execute"
+              ]
+            },
+            "description": "RF-LIN-03; source=system|application|security|setup|forwarded (o syslog|auth|journal|kern). bundle=true lee los 5.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tool\": \"linux_syslog\",\n  \"params\": {\n    \"source\": \"syslog\",\n    \"max_lines\": 40\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "métricas /proc",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/agents/{{agent_id}}/execute",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "agents",
+                "{{agent_id}}",
+                "execute"
+              ]
+            },
+            "description": "RF-LIN-04 sin psutil",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tool\": \"linux_proc_metrics\",\n  \"params\": {\n    \"cpu_interval\": 0.15\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "netlink",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/agents/{{agent_id}}/execute",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "agents",
+                "{{agent_id}}",
+                "execute"
+              ]
+            },
+            "description": "RF-LIN-05",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tool\": \"linux_netlink\",\n  \"params\": {\n    \"max_ifaces\": 32\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "systemd units",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/agents/{{agent_id}}/execute",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "agents",
+                "{{agent_id}}",
+                "execute"
+              ]
+            },
+            "description": "RF-LIN-06",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tool\": \"linux_systemd_units\",\n  \"params\": {\n    \"max_units\": 80\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "SELinux / AppArmor",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/agents/{{agent_id}}/execute",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "agents",
+                "{{agent_id}}",
+                "execute"
+              ]
+            },
+            "description": "RF-LIN-07; OK si están off",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tool\": \"linux_lsm\",\n  \"params\": {}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "paquetes dpkg/rpm",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/agents/{{agent_id}}/execute",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "agents",
+                "{{agent_id}}",
+                "execute"
+              ]
+            },
+            "description": "RF-LIN-08",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tool\": \"linux_packages\",\n  \"params\": {\n    \"include_hash\": true,\n    \"max_hash\": 5\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "4. Observabilidad",
+      "description": "",
+      "item": [
+        {
+          "name": "ping",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/agents/{{agent_id}}/execute",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "agents",
+                "{{agent_id}}",
+                "execute"
+              ]
+            },
+            "description": "DOWN/EMPTY/UNSUPPORTED ahora llegan como ok=false. timeout_ms en params (SRS) o timeout (s).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tool\": \"ping\",\n  \"params\": {\n    \"host\": \"8.8.8.8\",\n    \"count\": 3,\n    \"timeout_ms\": 3000\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "system_metrics",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/agents/{{agent_id}}/execute",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "agents",
+                "{{agent_id}}",
+                "execute"
+              ]
+            },
+            "description": "timeout de primer nivel = espera REST. cpu_interval va en params.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tool\": \"system_metrics\",\n  \"params\": {\n    \"cpu_interval\": 0.2\n  },\n  \"timeout\": 15\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "disk_usage",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/agents/{{agent_id}}/execute",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "agents",
+                "{{agent_id}}",
+                "execute"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tool\": \"disk_usage\",\n  \"params\": {}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "process_list",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/agents/{{agent_id}}/execute",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "agents",
+                "{{agent_id}}",
+                "execute"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tool\": \"process_list\",\n  \"params\": {}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "service_status",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/agents/{{agent_id}}/execute",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "agents",
+                "{{agent_id}}",
+                "execute"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tool\": \"service_status\",\n  \"params\": {}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "network_connections",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/agents/{{agent_id}}/execute",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "agents",
+                "{{agent_id}}",
+                "execute"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tool\": \"network_connections\",\n  \"params\": {}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "health_probes (config)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/agents/{{agent_id}}/execute",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "agents",
+                "{{agent_id}}",
+                "execute"
+              ]
+            },
+            "description": "Usa health_probes.checks del config si params.checks está vacío",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tool\": \"health_probes\",\n  \"params\": {}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "health_check (agente)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/agents/{{agent_id}}/execute",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "agents",
+                "{{agent_id}}",
+                "execute"
+              ]
+            },
+            "description": "Salud del proceso agente, no de los probes",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tool\": \"health_check\",\n  \"params\": {}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "hardware_inventory",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/agents/{{agent_id}}/execute",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "agents",
+                "{{agent_id}}",
+                "execute"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tool\": \"hardware_inventory\",\n  \"params\": {}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "forensic_snapshot",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/agents/{{agent_id}}/execute",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "agents",
+                "{{agent_id}}",
+                "execute"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tool\": \"forensic_snapshot\",\n  \"params\": {},\n  \"timeout\": 60\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "5. CVE (backend)",
+      "description": "",
+      "item": [
+        {
+          "name": "Catálogo CVE local",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/cve/catalog",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "cve",
+                "catalog"
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "Correlacionar paquetes",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/cve/correlate",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "cve",
+                "correlate"
+              ]
+            },
+            "description": "Si mandás agent_id, persiste hallazgos. Sin agent_id, solo cruza.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"agent_id\": \"{{agent_id}}\",\n  \"packages\": [\n    {\n      \"name\": \"openssl\",\n      \"version\": \"1.1.1\"\n    },\n    {\n      \"name\": \"curl\",\n      \"version\": \"7.81.0\"\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Vulnerabilidades del agente",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/agents/{{agent_id}}/vulnerabilities",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "agents",
+                "{{agent_id}}",
+                "vulnerabilities"
+              ]
+            },
+            "description": "404 si todavía no corriste cve_inventory / correlate."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "6. Cola de comandos",
+      "description": "",
+      "item": [
+        {
+          "name": "Comandos de este agente",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/agents/{{agent_id}}/commands",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "agents",
+                "{{agent_id}}",
+                "commands"
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "Todos los comandos",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/commands",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "commands"
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "Comando por message_id",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/commands/{{message_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "commands",
+                "{{message_id}}"
+              ]
+            },
+            "description": "Pegá el id de un execute (campo id / message_id) en la variable message_id."
+          },
+          "response": []
+        },
+        {
+          "name": "Comando del agente por message_id",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/agents/{{agent_id}}/commands/{{message_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "agents",
+                "{{agent_id}}",
+                "commands",
+                "{{message_id}}"
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "7. RobinLogs (proxy GET /api/logs)",
+      "description": "No uses ?agentId= (UUID de store). El host está en metadata.data.agent_id.",
+      "item": [
+        {
+          "name": "Logs security",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/logs?type=audit&category=security&limit=20",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "logs"
+              ],
+              "query": [
+                {
+                  "key": "type",
+                  "value": "audit"
+                },
+                {
+                  "key": "category",
+                  "value": "security"
+                },
+                {
+                  "key": "limit",
+                  "value": "20"
+                }
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "Logs FIM",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/logs?subcategory=fim_change&limit=10",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "logs"
+              ],
+              "query": [
+                {
+                  "key": "subcategory",
+                  "value": "fim_change"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "Logs detection",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/logs?category=security&subcategory=detection&limit=10",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "logs"
+              ],
+              "query": [
+                {
+                  "key": "category",
+                  "value": "security"
+                },
+                {
+                  "key": "subcategory",
+                  "value": "detection"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "Logs threshold",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/logs?subcategory=threshold&limit=10",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "logs"
+              ],
+              "query": [
+                {
+                  "key": "subcategory",
+                  "value": "threshold"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "Logs probe",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/logs?subcategory=probe&limit=10",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "logs"
+              ],
+              "query": [
+                {
+                  "key": "subcategory",
+                  "value": "probe"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "Logs otlp_metrics",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/logs?type=metrics&subcategory=otlp_metrics&limit=5",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "logs"
+              ],
+              "query": [
+                {
+                  "key": "type",
+                  "value": "metrics"
+                },
+                {
+                  "key": "subcategory",
+                  "value": "otlp_metrics"
+                },
+                {
+                  "key": "limit",
+                  "value": "5"
+                }
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "Logs tool_result",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/logs?type=metrics&subcategory=tool_result&limit=10",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "logs"
+              ],
+              "query": [
+                {
+                  "key": "type",
+                  "value": "metrics"
+                },
+                {
+                  "key": "subcategory",
+                  "value": "tool_result"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "Logs agent_connected",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/logs?category=system&subcategory=agent_connected&limit=10",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "logs"
+              ],
+              "query": [
+                {
+                  "key": "category",
+                  "value": "system"
+                },
+                {
+                  "key": "subcategory",
+                  "value": "agent_connected"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "Logs execution locales",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/execution-logs",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "execution-logs"
+              ]
+            },
+            "description": "JSON en results_logs/ del server, no RobinLogs."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "7. Remediación (alto riesgo)",
+      "description": "No correr en producción sin política. Lab: policy.allow_high_risk=true.",
+      "item": [
+        {
+          "name": "kill_process (por nombre)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/agents/{{agent_id}}/execute",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "agents",
+                "{{agent_id}}",
+                "execute"
+              ]
+            },
+            "description": "LAB ONLY. Backend: comando en ALLOW_HIGH_RISK_COMMANDS (DEFAULT_DISABLED). Agente: allow_high_risk + allowed_commands.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tool\": \"kill_process\",\n  \"params\": {\n    \"name\": \"notepad.exe\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "block_ip",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/agents/{{agent_id}}/execute",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "agents",
+                "{{agent_id}}",
+                "execute"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tool\": \"block_ip\",\n  \"params\": {\n    \"ip\": \"203.0.113.1\",\n    \"direction\": \"input\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "unblock_ip",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/agents/{{agent_id}}/execute",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "agents",
+                "{{agent_id}}",
+                "execute"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tool\": \"unblock_ip\",\n  \"params\": {\n    \"ip\": \"203.0.113.1\",\n    \"direction\": \"input\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "isolate_host",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/agents/{{agent_id}}/execute",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "agents",
+                "{{agent_id}}",
+                "execute"
+              ]
+            },
+            "description": "Crítico. `manager_host` debe ser la IP LAN del servidor de control (variable `manager_host`). Si se omite, el agente usa el host de `websocket_url`. Auto-revert al expirar `duration_seconds` (también al reiniciar el agente si el timer venció). Para revertir a mano: `restore_isolation`.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tool\": \"isolate_host\",\n  \"params\": {\n    \"duration_seconds\": 60,\n    \"manager_host\": \"{{manager_host}}\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "restore_isolation",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/agents/{{agent_id}}/execute",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "agents",
+                "{{agent_id}}",
+                "execute"
+              ]
+            },
+            "description": "Crítico. Revierte reglas de isolate_host (iptables/netsh) guardadas en el estado local del agente. Mismos gates que isolate: ALLOW_HIGH_RISK_COMMANDS en backend (restore_isolation está en DEFAULT_DISABLED) + allow_high_risk y allowed_commands en el agente.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tool\": \"restore_isolation\",\n  \"params\": {}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}

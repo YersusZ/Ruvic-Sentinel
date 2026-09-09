@@ -1,0 +1,25 @@
+{
+  "id": "ruvic_sentinel",
+  "name": "Ruvic Sentinel",
+  "name_en": "Ruvic Sentinel",
+  "description": "Agente en cada host (robin-client-monitor): enrollment, comandos firmados por WebSocket y telemetría para reportes.",
+  "description_en": "Per-host agent (robin-client-monitor): enrollment, signed WebSocket commands, and telemetry for reports.",
+  "category": "cybersecurity",
+  "category_en": "cybersecurity",
+  "keywords": [
+    "Ruvic Sentinel",
+    "ruvic_sentinel",
+    "ws client",
+    "ws_client",
+    "endpoint",
+    "agente",
+    "agent",
+    "host",
+    "websocket",
+    "enrollment",
+    "telemetria",
+    "telemetry",
+    "robin-client-monitor",
+    "otlp"
+  ]
+}

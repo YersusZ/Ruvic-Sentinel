@@ -1,0 +1,34 @@
+# Orquestación del servidor de control del agente.
+#
+# Layout Robin (raíz del project = SOURCE_PATH):
+#
+#   project/
+#     Dockerfile          # copiar desde ws_client/Dockerfile
+#     .dockerignore       # copiar desde ws_client/.dockerignore
+#     ws_client/          # este repo
+#
+# Uso (desde ws_client/, con Dockerfile y .dockerignore en el padre):
+#   docker compose up -d --build
+services:
+  server:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    image: ws-agent-server:latest
+    container_name: ws-agent-server
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    environment:
+      PYTHONUNBUFFERED: "1"
+    volumes:
+      - ./server/results_logs:/app/server/results_logs
+      - ./certs/server/signing.key:/certs/signing.key:ro
+    healthcheck:
+      test: ["CMD", "python", "healthcheck.py"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s

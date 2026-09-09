@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 280" width="720" height="280" role="img">
+  <rect width="720" height="280" fill="#FDF2E1"/>
+  <rect x="24" y="24" width="672" height="232" rx="8" fill="#101630"/>
+  <text x="48" y="64" fill="#FDF2E1" font-family="system-ui,sans-serif" font-size="16" font-weight="700">/opt/robin-client-monitor/</text>
+  <text x="64" y="100" fill="#F2AF5E" font-family="IBM Plex Mono,monospace" font-size="14">robin-client-monitor</text>
+  <text x="64" y="128" fill="#FDF2E1" font-family="IBM Plex Mono,monospace" font-size="14">config_client.json</text>
+  <text x="64" y="156" fill="#FDF2E1" font-family="IBM Plex Mono,monospace" font-size="14">enrollment/</text>
+  <text x="88" y="184" fill="#FDF2E1" font-family="IBM Plex Mono,monospace" font-size="13">active.json</text>
+  <text x="88" y="212" fill="#FDF2E1" font-family="IBM Plex Mono,monospace" font-size="13">PC_Linux_Prod/identity.json + certs/</text>
+</svg>

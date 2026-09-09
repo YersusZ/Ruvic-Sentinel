@@ -1,0 +1,88 @@
+{
+  "_comment": "LAB: allow_insecure_ws (ws://). Firma de comando siempre on (§8.2). Alto/Crítico off (allow_high_risk=false + allowed_commands vacío).",
+  "client_name": "PC_Linux_Test",
+  "tenant_id": "",
+  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQDJ8PufwrdP/tSI\nnvHia8bcswFhnAAWgh5rJsiRw0IuBGJ7adWa1xCDpxp4CZAlh/hdTop07z64aqXg\ncyyz077h+0lOTisxI2zLptNV4wxNOp1rvPl9dkxdsdMeeagdmXGFdZbkKTTtFJDu\nlvVhgsnrs+OWOHtkzMhQLuvb+TTuk/zHkZqZ3Ny/dIBVFkyc+Xt2l+UQAsYegXj2\nRlXQqz8LyZ9eHE9GLh1A4yeqfZzz8TforUsejy6UBF9fFTIXlUX/+hakTOc/NQ3r\nKWyf0drnUCbzz5lCtDtjaYRzbzt1DEPmy+7AP+75B1WlLYz73gJYWGAlyG0g2+Y3\nRMBA0TqrAgMBAAECggEAS6P8XGcvCsPFEDeZGtqL7ncOeWVZkxTCGBi63/5nd50k\n1l1aKVmNUgLxoyzR1X0MxsZ4jjxfHey0nVIG2ITj5vmdB7u36fv+8HlYh784CGWA\nOa7bNOduy1mkXrHrCstC/l6BWo0kyfj+IKBi4VeAEs2a3dXiQmuCTKaGqiq6bPJP\nS40p/Tofl1eKgpYAF6N/LHKI0iS9OSNFagOy7i/Ju4Kef4hy/oqaeaFuARTC4xbQ\nwsLEt+PzI8PttIJog24Ieqr5Pl4vFetH6Rp4L51GtsARty++GUNF0eHd/hJ7sQXy\ncAXQOf54JhxTMWIJX3FLl73JciNI/I2e/5d4odVtYQKBgQDnyjqOQnIlIG7k/gA1\nOks7GdqNSPGqTdY/992dKNAFUpObFi10kDhKsS066wloXBMk7GtV0XTAtZ4chxdI\nHsCIOAO6BXSGWcrMeS8VcDbvxZnB0Vvri2YbFMc7RPhIDwtJKISSp9o26pkVtbKd\nzRhX0R6bo4Ne8O5ovO4lIl5mtQKBgQDfCKPJSCX2uC9CjNm+pG0wjZxgHQYE76hG\nqaJcR+KmxY4DQeU71Pqb6dB1dfdlm+VgLpHjVhtGCN/NCcwjZK1n4l+GMg+CbuwN\nFwQhRP1Bmtz5z80EWI7VoHBQRgc4xjisbNmba2FmamfP6kDMNfX7MVJd2dynZ7bO\nuXfEMZ2X3wKBgQDjq2tgmDtt5DGIk0S5A40pe/eDlwZodRPguSHgYFoTIE0DpAD5\n4T6pfuYiXQJckzPqrJ2xKY84SiwHcVmY6TvLkNl4Oit+W2wq800gDZyoXrrr+SwE\nbGPabcpTmScWAFDhhv7Q3jYkgsHi5RmQjgc/GpSp4y4Cbzx9fDWeG+gFkQKBgQCY\ndk+ASNGq1j14QNCYgc4iYquDCFQVC778jvluG7XUSzfJAkKxo+WsryjRItL7opYq\nKauQvEvolChpAUmK6EehvB2Qnqf7gdfbGuC33XFCZ5qnKmX7ko4ReptMRJKrPNWB\nCOe4Vq8+U36jon6pGjoMfKrRfRxZU4yjxCUa+M/CAQKBgHNKqCB4f9/t2YsG8Fh0\ndhiR4jR0+ex7cO3WhpKr7bGuq+H9tbHg9I3aZJqEKLKypmgJmNfEeKA32uep8Gs4\nVAxgXXUx6jpnwuUHN3EDt15kFVG64thiBI6SY3SnMEmMwYHGa18gID72SwznnuqR\neS9kvldJl4Zo8Tlmdz8XjSw+\n-----END PRIVATE KEY-----\n",
+  "public_key": "-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAyfD7n8K3T/7UiJ7x4mvG\n3LMBYZwAFoIeaybIkcNCLgRie2nVmtcQg6caeAmQJYf4XU6KdO8+uGql4HMss9O+\n4ftJTk4rMSNsy6bTVeMMTTqda7z5fXZMXbHTHnmoHZlxhXWW5Ck07RSQ7pb1YYLJ\n67Pjljh7ZMzIUC7r2/k07pP8x5Gamdzcv3SAVRZMnPl7dpflEALGHoF49kZV0Ks/\nC8mfXhxPRi4dQOMnqn2c8/E36K1LHo8ulARfXxUyF5VF//oWpEznPzUN6ylsn9Ha\n51Am88+ZQrQ7Y2mEc287dQxD5svuwD/u+QdVpS2M+94CWFhgJchtINvmN0TAQNE6\nqwIDAQAB\n-----END PUBLIC KEY-----\n",
+  "websocket_url": "ws://localhost:8000/ws/colsoft-tools",
+  "allow_insecure_ws": true,
+  "require_command_signature": true,
+  "agent_id": "PC_Linux_Test",
+  "signing_public_key": "certs/enrollment/signing.pub",
+  "tls_ca_cert": "certs/enrollment/ca.crt",
+  "tls_client_cert": "certs/enrollment/agent.crt",
+  "tls_client_key": "certs/enrollment/agent.key",
+  "heartbeat_interval": 60,
+  "policy": {
+    "allowed_commands": [],
+    "allow_high_risk": false
+  },
+  "scripts_catalog": {},
+  "audit_log_path": "results_logs/agent_audit.jsonl",
+  "max_command_rate": 20,
+  "auto_update": {},
+  "telemetry_buffer": {
+    "max_age_days": 7.0,
+    "max_file_bytes": 8388608,
+    "max_total_bytes": 1073741824
+  },
+  "tamper": {
+    "allow_rebaseline": true
+  },
+  "scheduler": {
+    "interval_seconds": 60,
+    "tools": [
+      { "tool": "system_metrics", "params": { "cpu_interval": 0.2 }, "timeout": 20 },
+      { "tool": "health_probes", "timeout": 30 },
+      { "tool": "linux_systemd_units", "timeout": 20 }
+    ]
+  },
+  "data_plane": {
+    "enabled": true,
+    "compression": "gzip",
+    "batch_size": 32,
+    "batch_interval_seconds": 5
+  },
+  "process_watch": {
+    "enabled": false
+  },
+  "service_watch": {
+    "enabled": false
+  },
+  "health_probes": {
+    "interval_seconds": 60,
+    "checks": [
+      { "id": "server_status", "type": "http", "url": "http://127.0.0.1:8000/health", "timeout": 5 }
+    ]
+  },
+  "alerts": {
+    "enabled": true,
+    "interval_seconds": 30,
+    "cooldown_seconds": 300,
+    "rules": [
+      { "id": "high_cpu", "metric": "cpu.percent", "op": "gt", "threshold": 90, "severity": "warning" },
+      { "id": "disk_full", "metric": "disks.percent.max", "op": "gte", "threshold": 90, "severity": "error" }
+    ]
+  },
+  "security": {
+    "fim": { "enabled": false, "interval_seconds": 60 },
+    "persistence": { "enabled": false, "interval_seconds": 120 },
+    "auth_audit": { "enabled": false, "interval_seconds": 30 },
+    "detection": { "enabled": false, "interval_seconds": 5, "max_events_per_tick": 20 },
+    "dns": { "enabled": false, "interval_seconds": 15 },
+    "rootkit": { "enabled": false, "interval_seconds": 300 },
+    "cis": { "enabled": false, "interval_seconds": 3600 },
+    "cve_inventory": { "enabled": false, "interval_seconds": 86400 },
+    "auto_response": { "enabled": false, "actions": [] }
+  },
+  "windows": {
+    "event_log": { "enabled": false, "interval_seconds": 60, "max_events_per_tick": 40 },
+    "autoruns": { "enabled": false, "interval_seconds": 300 },
+    "sysmon": { "enabled": false, "interval_seconds": 60 }
+  },
+  "linux": {
+    "auditd": { "enabled": false, "interval_seconds": 60, "max_events_per_tick": 40 },
+    "systemd": { "enabled": false, "interval_seconds": 300 },
+    "netlink": { "enabled": false, "interval_seconds": 15 }
+  }
+}

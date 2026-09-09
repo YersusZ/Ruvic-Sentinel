@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  RF-WIN-08 / §16: plantilla MSI (WiX 4). Compilar en Windows:
+
+    wix build deploy/robin-client-monitor.wxs -o dist/robin-client-monitor.msi \
+      -d SourceDir=dist
+
+  Requiere en SourceDir: robin-client-monitor.exe, nssm.exe,
+  install-service-windows.bat, config_client.json
+  (copiá config_client.packaged.json → config_client.json si no hay plantilla de lab).
+
+  Silencioso (Intune / SCCM):
+    msiexec /i robin-client-monitor.msi /qn /norestart ^
+      ENROLLTOKEN=... ENROLLSERVER=https://host:8000 ENROLLTENANT=...
+
+  Firma: powershell -File deploy/sign-windows.ps1 dist\robin-client-monitor.msi
+-->
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
+  <Package
+      Name="Robin Client Monitor"
+      Manufacturer="Ruvic Colsoft"
+      Version="0.9.0"
+      UpgradeCode="a8c4e1d2-7b19-4f3a-9e55-21c0b8d4f001"
+      Scope="perMachine">
+    <MajorUpgrade DowngradeErrorMessage="Ya hay una version igual o posterior instalada." />
+    <MediaTemplate EmbedCab="yes" />
+    <Feature Id="Main">
+      <ComponentRef Id="AppFiles" />
+      <ComponentRef Id="NssmFile" />
+    </Feature>
+
+    <Property Id="ENROLLTOKEN" Secure="yes" Hidden="yes" />
+    <Property Id="ENROLLSERVER" />
+    <Property Id="ENROLLTENANT" />
+    <Property Id="ENROLLNAME" />
+    <Property Id="ENROLLINSECURE" />
+
+    <StandardDirectory Id="ProgramFiles64Folder">
+      <Directory Id="INSTALLFOLDER" Name="robin-client-monitor">
+        <Component Id="AppFiles">
+          <File Source="!(wix.SourceDir)robin-client-monitor.exe" KeyPath="yes" />
+          <File Source="!(wix.SourceDir)config_client.json" />
+          <File Source="!(wix.SourceDir)install-service-windows.bat" />
+        </Component>
+        <Directory Id="NssmDir" Name="nssm">
+          <Component Id="NssmFile">
+            <File Source="!(wix.SourceDir)nssm.exe" />
+          </Component>
+        </Directory>
+      </Directory>
+    </StandardDirectory>
+
+    <CustomAction
+        Id="EnrollAndService"
+        Directory="INSTALLFOLDER"
+        ExeCommand="[System64Folder]cmd.exe /c set &quot;ENROLLTOKEN=[ENROLLTOKEN]&quot; &amp;&amp; set &quot;ENROLLSERVER=[ENROLLSERVER]&quot; &amp;&amp; set &quot;ENROLLTENANT=[ENROLLTENANT]&quot; &amp;&amp; set &quot;ENROLLNAME=[ENROLLNAME]&quot; &amp;&amp; set &quot;ENROLLINSECURE=[ENROLLINSECURE]&quot; &amp;&amp; install-service-windows.bat &quot;[INSTALLFOLDER]&quot;"
+        Execute="immediate"
+        Impersonate="no"
+        Return="ignore" />
+    <InstallExecuteSequence>
+      <Custom Action="EnrollAndService" After="InstallFinalize" Condition="NOT Installed" />
+    </InstallExecuteSequence>
+  </Package>
+</Wix>

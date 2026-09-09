@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title data-i18n="doc_title">Ruvic Sentinel</title>
+  <link rel="stylesheet" href="assets/ruvic.css">
+</head>
+<body>
+  <main class="ruvic-container">
+    <h1 data-i18n="guide_title">Ruvic Sentinel</h1>
+    <p class="guide-updated">{{ULTIMA_ACTUALIZACION}}</p>
+
+    <nav class="ruvic-toc" aria-label="Índice">
+      <p data-i18n="toc_title"><strong>Contenido</strong></p>
+      <ol>
+        <li><a href="#que-es" data-i18n="toc.que_es">¿Qué es y para qué sirve?</a></li>
+        <li><a href="#prerrequisitos" data-i18n="toc.prerrequisitos">Prerrequisitos</a></li>
+        <li><a href="#configuracion-fabricante" data-i18n="toc.configuracion_fabricante">Configuración en el fabricante</a></li>
+        <li><a href="#permisos" data-i18n="toc.permisos">Permisos requeridos</a></li>
+        <li><a href="#configuracion-ruvic" data-i18n="toc.configuracion_ruvic">Configuración en Ruvic</a></li>
+        <li><a href="#verificacion" data-i18n="toc.verificacion">Verificación</a></li>
+        <li><a href="#solucion-problemas" data-i18n="toc.solucion_problemas">Solución de problemas</a></li>
+        <li><a href="#faq-seguridad" data-i18n="toc.faq_seguridad">Preguntas frecuentes y notas de seguridad</a></li>
+      </ol>
+    </nav>
+
+    <section>
+      <h2 id="que-es" data-i18n="section.que_es">¿Qué es y para qué sirve?</h2>
+      <p data-i18n="section.que_es.body">Ruvic Sentinel es el agente por host del repo ws_client. En cada máquina corre como robin-client-monitor. El servidor de control de Ruvic le habla por WebSocket: envía herramientas bajo demanda y recibe resultados. La telemetría se guarda en la API de logs y un reporte la grafica.</p>
+      <p data-i18n="section.que_es.not_canvas">No es el agente de código de Agent Canvas ni un conector OAuth tipo Gmail. Es un proceso instalado en Linux, Windows o macOS que se enrola una vez y queda como servicio.</p>
+      <p data-i18n="section.que_es.planes">Hay dos planos: control (wss://…/ws/colsoft-tools: handshake RSA, comandos firmados Ed25519) y datos (HTTPS OTLP /v1/logs). Las series de CPU/RAM no van por el WebSocket.</p>
+    </section>
+
+    <section>
+      <h2 id="prerrequisitos" data-i18n="section.prerrequisitos">Prerrequisitos</h2>
+      <ul>
+        <li data-i18n="prereq.1">Binario robin-client-monitor (Linux/macOS) o robin-client-monitor.exe (Windows), más config_client.json sin llaves.</li>
+        <li data-i18n="prereq.2">Permiso de administrador en el host y red hasta la URL pública HTTPS del control.</li>
+        <li data-i18n="prereq.3">JWT del dueño del agente para generar un token de enrollment enr_… (un solo uso), o una carpeta enrollment/ ya provisionada.</li>
+        <li data-i18n="prereq.4">En macOS el agente se enrola y conecta; las tools nativas de Windows/Linux responden UNSUPPORTED.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2 id="configuracion-fabricante" data-i18n="section.configuracion_fabricante">Configuración en el fabricante</h2>
+      <p data-i18n="fab.intro">El “fabricante” es el propio host. Instala el binario en una ruta estable, no en Descargas.</p>
+      <p><img src="assets/img/layout.svg" alt="" width="720" height="280" data-i18n-alt="img.layout.alt"></p>
+      <ol class="ruvic-steps">
+        <li><strong data-i18n="fab.s1.label">Copiar archivos:</strong> <span data-i18n="fab.s1.body">Linux/macOS: /opt/robin-client-monitor. Windows: C:\Program Files\robin-client-monitor. Incluye el ejecutable y config_client.json.</span></li>
+        <li><strong data-i18n="fab.s2.label">Enrolar una vez:</strong> <span data-i18n="fab.s2.body">Contra la URL pública HTTPS (no 127.0.0.1 en producción). No pases --enroll-ca si el ingress usa Let's Encrypt.</span></li>
+        <li><strong data-i18n="fab.s3.label">Servicio:</strong> <span data-i18n="fab.s3.body">systemd (unidad en el repo deploy/), instalador Windows robin-client-monitor-setup.exe, o launchd com.colsoft.robin-client-monitor.plist. El servicio no lleva --enroll.</span></li>
+      </ol>
+      <pre><code>robin-client-monitor \
+  --enroll enr_xxxxxxxx \
+  --enroll-server https://&lt;instancia&gt; \
+  --enroll-name PC_Linux_Prod</code></pre>
+      <p class="callout callout-warning" data-i18n="fab.warn">Un ca.crt viejo bajo enrollment/ o tls_ca_cert en el JSON se usa como pin HTTPS y provoca CERTIFICATE_VERIFY_FAILED contra un ingress público.</p>
+    </section>
+
+    <section>
+      <h2 id="permisos" data-i18n="section.permisos">Permisos requeridos</h2>
+      <table>
+        <thead>
+          <tr>
+            <th data-i18n="table.permiso">Permiso</th>
+            <th data-i18n="table.para_que">Para qué sirve</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td data-i18n="perm.admin.host">Administrador en el host</td>
+            <td data-i18n="perm.admin.host.why">Instalar el servicio, escribir enrollment/ y leer métricas del sistema.</td>
+          </tr>
+          <tr>
+            <td data-i18n="perm.jwt">JWT del dueño (API REST)</td>
+            <td data-i18n="perm.jwt.why">POST /api/enrollment-tokens, GET /api/agents y POST /api/agents/{id}/execute. El agente no presenta este JWT al WebSocket.</td>
+          </tr>
+          <tr>
+            <td data-i18n="perm.token">Token enr_… de un solo uso</td>
+            <td data-i18n="perm.token.why">POST /api/enroll: crea agent_id, llaves RSA y websocket_url. Ligado al sub del JWT que lo emitió.</td>
+          </tr>
+          <tr>
+            <td data-i18n="perm.signing">Par Ed25519 del servidor</td>
+            <td data-i18n="perm.signing.why">El host verifica command_request con certs/signing.pub. Si no coincide con SERVER_SIGNING_KEY, los comandos se rechazan.</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section>
+      <h2 id="configuracion-ruvic" data-i18n="section.configuracion_ruvic">Configuración en Ruvic</h2>
+      <p data-i18n="ruvic.intro">En Ruvic no pegas PEMs. Generas el token con el JWT del dueño y dejas que --enroll escriba enrollment/.</p>
+      <ol class="ruvic-steps">
+        <li><strong data-i18n="ruvic.s1.label">Generar token:</strong> <span data-i18n="ruvic.s1.body">POST https://&lt;instancia&gt;/api/enrollment-tokens con Authorization: Bearer &lt;jwt&gt;. Respuesta: token enr_…, expires_at, user_id.</span></li>
+        <li><strong data-i18n="ruvic.s2.label">Enrolar el host:</strong> <span data-i18n="ruvic.s2.body">--enroll-server debe ser la URL pública HTTPS del control. El bundle guarda wss://…/ws/colsoft-tools.</span></li>
+        <li><strong data-i18n="ruvic.s3.label">config_client.json:</strong> <span data-i18n="ruvic.s3.body">Solo operación: scheduler, policy, data_plane. Si allow_insecure_ws es true (TLS en el ingress), el runtime limpia tls_* para no pinear la CA de agentes.</span></li>
+      </ol>
+      <pre><code>POST /api/enrollment-tokens
+Authorization: Bearer &lt;jwt&gt;
+
+POST /api/agents/&lt;agent_id&gt;/execute
+Authorization: Bearer &lt;jwt&gt;
+{"command": "health_check", "params": {}}</code></pre>
+    </section>
+
+    <section>
+      <h2 id="verificacion" data-i18n="section.verificacion">Verificación</h2>
+      <ol class="ruvic-steps">
+        <li><strong data-i18n="ver.s1.label">Self-test:</strong> <span data-i18n="ver.s1.body">robin-client-monitor --self-test debe salir 0. Si falla, no arranques el servicio.</span></li>
+        <li><strong data-i18n="ver.s2.label">Logs:</strong> <span data-i18n="ver.s2.body">Identidad de enrollment con agent_id agt_… y auth_ack (autenticación confirmada).</span></li>
+        <li><strong data-i18n="ver.s3.label">Inventario:</strong> <span data-i18n="ver.s3.body">GET /api/agents con el mismo JWT lista el host. Lista vacía = otro usuario o sin fila de owner.</span></li>
+        <li><strong data-i18n="ver.s4.label">Comando:</strong> <span data-i18n="ver.s4.body">POST /api/agents/{id}/execute con health_check. Si ves Firma Ed25519 inválida, el signing.pub no coincide con la llave del servidor.</span></li>
+      </ol>
+    </section>
+
+    <section>
+      <h2 id="solucion-problemas" data-i18n="section.solucion_problemas">Solución de problemas</h2>
+      <p><strong data-i18n="tr.tls.title">CERTIFICATE_VERIFY_FAILED en el enroll</strong></p>
+      <p data-i18n="tr.tls.body">El cliente pinea una CA que no firmó el HTTPS público. Quita --enroll-ca, tls_ca_cert y cualquier ca.crt previo a enrolar contra Let's Encrypt.</p>
+      <p><strong data-i18n="tr.ed.title">Firma Ed25519 inválida</strong></p>
+      <p data-i18n="tr.ed.body">openssl pkey -in /certs/signing.key -pubout y el signing.pub del host deben tener la misma huella. Si no, remonta la llave o vuelve a enrolar (token nuevo). Comprueba enrollment/active.json.</p>
+      <p><strong data-i18n="tr.tok.title">Token 403 / ya usado</strong></p>
+      <p data-i18n="tr.tok.body">El enr_… se consume en el primer POST /api/enroll OK. Genera otro. Si identity.json ya existe en esa carpeta, el CLI reutiliza el bundle y no llama al servidor.</p>
+      <p><strong data-i18n="tr.local.title">El agente apunta a 127.0.0.1</strong></p>
+      <p data-i18n="tr.local.body">El enroll se hizo contra lab. Vuelve a enrolar contra la URL pública (carpeta nueva o --enroll-dir).</p>
+    </section>
+
+    <section>
+      <h2 id="faq-seguridad" data-i18n="section.faq_seguridad">Preguntas frecuentes y notas de seguridad</h2>
+      <p><strong data-i18n="faq.1.q">¿El agente envía el JWT por WebSocket?</strong></p>
+      <p data-i18n="faq.1.a">No. JWT es solo REST. El socket usa firma RSA de auth_challenge con identity.key.</p>
+      <p><strong data-i18n="faq.2.q">¿Puedo pegar las llaves en config_client.json?</strong></p>
+      <p data-i18n="faq.2.a">No en producción. Si JSON y bundle discrepan, gana enrollment/. Un JSON viejo firma el handshake con la llave equivocada.</p>
+      <p><strong data-i18n="faq.3.q">¿--enroll-insecure es aceptable?</strong></p>
+      <p data-i18n="faq.3.a">Solo lab (ws://). Nunca en producción.</p>
+      <p><strong data-i18n="faq.4.q">¿Dónde está el detalle de las 55 tools?</strong></p>
+      <p data-i18n="faq.4.a">En la documentación de producto: JSON de telemetría y widgets de reporte (OTLP points[], no result.cpu.load_avg_1).</p>
+    </section>
+  </main>
+
+  <script>
+    window.I18N = {
+      es: {
+        doc_title: "Ruvic Sentinel",
+        toc_title: "Contenido",
+        "toc.que_es": "¿Qué es y para qué sirve?",
+        "toc.prerrequisitos": "Prerrequisitos",
+        "toc.configuracion_fabricante": "Configuración en el fabricante",
+        "toc.permisos": "Permisos requeridos",
+        "toc.configuracion_ruvic": "Configuración en Ruvic",
+        "toc.verificacion": "Verificación",
+        "toc.solucion_problemas": "Solución de problemas",
+        "toc.faq_seguridad": "Preguntas frecuentes y notas de seguridad",
+        guide_title: "Ruvic Sentinel",
+        "section.que_es": "¿Qué es y para qué sirve?",
+        "section.que_es.body": "Ruvic Sentinel es el agente por host del repo ws_client. En cada máquina corre como robin-client-monitor. El servidor de control de Ruvic le habla por WebSocket: envía herramientas bajo demanda y recibe resultados. La telemetría se guarda en la API de logs y un reporte la grafica.",
+        "section.que_es.not_canvas": "No es el agente de código de Agent Canvas ni un conector OAuth tipo Gmail. Es un proceso instalado en Linux, Windows o macOS que se enrola una vez y queda como servicio.",
+        "section.que_es.planes": "Hay dos planos: control (wss://…/ws/colsoft-tools: handshake RSA, comandos firmados Ed25519) y datos (HTTPS OTLP /v1/logs). Las series de CPU/RAM no van por el WebSocket.",
+        "section.prerrequisitos": "Prerrequisitos",
+        "prereq.1": "Binario robin-client-monitor (Linux/macOS) o robin-client-monitor.exe (Windows), más config_client.json sin llaves.",
+        "prereq.2": "Permiso de administrador en el host y red hasta la URL pública HTTPS del control.",
+        "prereq.3": "JWT del dueño del agente para generar un token de enrollment enr_… (un solo uso), o una carpeta enrollment/ ya provisionada.",
+        "prereq.4": "En macOS el agente se enrola y conecta; las tools nativas de Windows/Linux responden UNSUPPORTED.",
+        "section.configuracion_fabricante": "Configuración en el fabricante",
+        "fab.intro": "El “fabricante” es el propio host. Instala el binario en una ruta estable, no en Descargas.",
+        "img.layout.alt": "Árbol de instalación: binario, config_client.json y enrollment/ junto al ejecutable.",
+        "fab.s1.label": "Copiar archivos:",
+        "fab.s1.body": "Linux/macOS: /opt/robin-client-monitor. Windows: C:\\Program Files\\robin-client-monitor. Incluye el ejecutable y config_client.json.",
+        "fab.s2.label": "Enrolar una vez:",
+        "fab.s2.body": "Contra la URL pública HTTPS (no 127.0.0.1 en producción). No pases --enroll-ca si el ingress usa Let's Encrypt.",
+        "fab.s3.label": "Servicio:",
+        "fab.s3.body": "systemd (unidad en el repo deploy/), instalador Windows robin-client-monitor-setup.exe, o launchd com.colsoft.robin-client-monitor.plist. El servicio no lleva --enroll.",
+        "fab.warn": "Un ca.crt viejo bajo enrollment/ o tls_ca_cert en el JSON se usa como pin HTTPS y provoca CERTIFICATE_VERIFY_FAILED contra un ingress público.",
+        "section.permisos": "Permisos requeridos",
+        "table.permiso": "Permiso",
+        "table.para_que": "Para qué sirve",
+        "perm.admin.host": "Administrador en el host",
+        "perm.admin.host.why": "Instalar el servicio, escribir enrollment/ y leer métricas del sistema.",
+        "perm.jwt": "JWT del dueño (API REST)",
+        "perm.jwt.why": "POST /api/enrollment-tokens, GET /api/agents y POST /api/agents/{id}/execute. El agente no presenta este JWT al WebSocket.",
+        "perm.token": "Token enr_… de un solo uso",
+        "perm.token.why": "POST /api/enroll: crea agent_id, llaves RSA y websocket_url. Ligado al sub del JWT que lo emitió.",
+        "perm.signing": "Par Ed25519 del servidor",
+        "perm.signing.why": "El host verifica command_request con certs/signing.pub. Si no coincide con SERVER_SIGNING_KEY, los comandos se rechazan.",
+        "section.configuracion_ruvic": "Configuración en Ruvic",
+        "ruvic.intro": "En Ruvic no pegas PEMs. Generas el token con el JWT del dueño y dejas que --enroll escriba enrollment/.",
+        "ruvic.s1.label": "Generar token:",
+        "ruvic.s1.body": "POST https://<instancia>/api/enrollment-tokens con Authorization: Bearer <jwt>. Respuesta: token enr_…, expires_at, user_id.",
+        "ruvic.s2.label": "Enrolar el host:",
+        "ruvic.s2.body": "--enroll-server debe ser la URL pública HTTPS del control. El bundle guarda wss://…/ws/colsoft-tools.",
+        "ruvic.s3.label": "config_client.json:",
+        "ruvic.s3.body": "Solo operación: scheduler, policy, data_plane. Si allow_insecure_ws es true (TLS en el ingress), el runtime limpia tls_* para no pinear la CA de agentes.",
+        "section.verificacion": "Verificación",
+        "ver.s1.label": "Self-test:",
+        "ver.s1.body": "robin-client-monitor --self-test debe salir 0. Si falla, no arranques el servicio.",
+        "ver.s2.label": "Logs:",
+        "ver.s2.body": "Identidad de enrollment con agent_id agt_… y auth_ack (autenticación confirmada).",
+        "ver.s3.label": "Inventario:",
+        "ver.s3.body": "GET /api/agents con el mismo JWT lista el host. Lista vacía = otro usuario o sin fila de owner.",
+        "ver.s4.label": "Comando:",
+        "ver.s4.body": "POST /api/agents/{id}/execute con health_check. Si ves Firma Ed25519 inválida, el signing.pub no coincide con la llave del servidor.",
+        "section.solucion_problemas": "Solución de problemas",
+        "tr.tls.title": "CERTIFICATE_VERIFY_FAILED en el enroll",
+        "tr.tls.body": "El cliente pinea una CA que no firmó el HTTPS público. Quita --enroll-ca, tls_ca_cert y cualquier ca.crt previo a enrolar contra Let's Encrypt.",
+        "tr.ed.title": "Firma Ed25519 inválida",
+        "tr.ed.body": "openssl pkey -in /certs/signing.key -pubout y el signing.pub del host deben tener la misma huella. Si no, remonta la llave o vuelve a enrolar (token nuevo). Comprueba enrollment/active.json.",
+        "tr.tok.title": "Token 403 / ya usado",
+        "tr.tok.body": "El enr_… se consume en el primer POST /api/enroll OK. Genera otro. Si identity.json ya existe en esa carpeta, el CLI reutiliza el bundle y no llama al servidor.",
+        "tr.local.title": "El agente apunta a 127.0.0.1",
+        "tr.local.body": "El enroll se hizo contra lab. Vuelve a enrolar contra la URL pública (carpeta nueva o --enroll-dir).",
+        "section.faq_seguridad": "Preguntas frecuentes y notas de seguridad",
+        "faq.1.q": "¿El agente envía el JWT por WebSocket?",
+        "faq.1.a": "No. JWT es solo REST. El socket usa firma RSA de auth_challenge con identity.key.",
+        "faq.2.q": "¿Puedo pegar las llaves en config_client.json?",
+        "faq.2.a": "No en producción. Si JSON y bundle discrepan, gana enrollment/. Un JSON viejo firma el handshake con la llave equivocada.",
+        "faq.3.q": "¿--enroll-insecure es aceptable?",
+        "faq.3.a": "Solo lab (ws://). Nunca en producción.",
+        "faq.4.q": "¿Dónde está el detalle de las 55 tools?",
+        "faq.4.a": "En la documentación de producto: JSON de telemetría y widgets de reporte (OTLP points[], no result.cpu.load_avg_1)."
+      },
+      en: {
+        doc_title: "Ruvic Sentinel",
+        toc_title: "Contents",
+        "toc.que_es": "What it is and what it’s for",
+        "toc.prerrequisitos": "Prerequisites",
+        "toc.configuracion_fabricante": "Vendor / provider setup",
+        "toc.permisos": "Required permissions",
+        "toc.configuracion_ruvic": "Configuration in Ruvic",
+        "toc.verificacion": "Verification",
+        "toc.solucion_problemas": "Troubleshooting",
+        "toc.faq_seguridad": "FAQ and security notes",
+        guide_title: "Ruvic Sentinel",
+        "section.que_es": "What it is and what it’s for",
+        "section.que_es.body": "Ruvic Sentinel is the per-host agent from the ws_client repo. On each machine it runs as robin-client-monitor. Ruvic’s control server talks to it over WebSocket: it sends on-demand tools and receives results. Telemetry is stored in the logs API and a report charts it.",
+        "section.que_es.not_canvas": "It is not the Agent Canvas coding agent, and not an OAuth connector like Gmail. It is a process on Linux, Windows, or macOS that you enroll once and run as a service.",
+        "section.que_es.planes": "There are two planes: control (wss://…/ws/colsoft-tools: RSA handshake, Ed25519-signed commands) and data (HTTPS OTLP /v1/logs). CPU/RAM time series do not go over the WebSocket.",
+        "section.prerrequisitos": "Prerequisites",
+        "prereq.1": "The robin-client-monitor binary (Linux/macOS) or robin-client-monitor.exe (Windows), plus a config_client.json with no keys.",
+        "prereq.2": "Administrator rights on the host and network reachability to the public HTTPS control URL.",
+        "prereq.3": "The agent owner’s JWT to mint a one-time enr_… enrollment token, or an enrollment/ folder already provisioned.",
+        "prereq.4": "On macOS the agent enrolls and connects; native Windows/Linux tools return UNSUPPORTED.",
+        "section.configuracion_fabricante": "Vendor / provider setup",
+        "fab.intro": "The “vendor” is the host itself. Install the binary on a stable path, not Downloads.",
+        "img.layout.alt": "Install tree: binary, config_client.json, and enrollment/ next to the executable.",
+        "fab.s1.label": "Copy files:",
+        "fab.s1.body": "Linux/macOS: /opt/robin-client-monitor. Windows: C:\\Program Files\\robin-client-monitor. Include the executable and config_client.json.",
+        "fab.s2.label": "Enroll once:",
+        "fab.s2.body": "Against the public HTTPS URL (not 127.0.0.1 in production). Do not pass --enroll-ca if the ingress uses Let’s Encrypt.",
+        "fab.s3.label": "Service:",
+        "fab.s3.body": "systemd (unit in the repo deploy/), Windows installer robin-client-monitor-setup.exe, or launchd com.colsoft.robin-client-monitor.plist. The service does not pass --enroll.",
+        "fab.warn": "A leftover ca.crt under enrollment/ or tls_ca_cert in the JSON is used as an HTTPS pin and causes CERTIFICATE_VERIFY_FAILED against a public ingress.",
+        "section.permisos": "Required permissions",
+        "table.permiso": "Permission",
+        "table.para_que": "What it is for",
+        "perm.admin.host": "Administrator on the host",
+        "perm.admin.host.why": "Install the service, write enrollment/, and read system metrics.",
+        "perm.jwt": "Owner JWT (REST API)",
+        "perm.jwt.why": "POST /api/enrollment-tokens, GET /api/agents, and POST /api/agents/{id}/execute. The agent never presents this JWT on the WebSocket.",
+        "perm.token": "One-time enr_… token",
+        "perm.token.why": "POST /api/enroll: creates agent_id, RSA keys, and websocket_url. Bound to the sub of the JWT that minted it.",
+        "perm.signing": "Server Ed25519 pair",
+        "perm.signing.why": "The host verifies command_request with certs/signing.pub. If it does not match SERVER_SIGNING_KEY, commands are rejected.",
+        "section.configuracion_ruvic": "Configuration in Ruvic",
+        "ruvic.intro": "Do not paste PEMs in Ruvic. Mint the token with the owner JWT and let --enroll write enrollment/.",
+        "ruvic.s1.label": "Mint a token:",
+        "ruvic.s1.body": "POST https://<instance>/api/enrollment-tokens with Authorization: Bearer <jwt>. Response: enr_… token, expires_at, user_id.",
+        "ruvic.s2.label": "Enroll the host:",
+        "ruvic.s2.body": "--enroll-server must be the public HTTPS control URL. The bundle stores wss://…/ws/colsoft-tools.",
+        "ruvic.s3.label": "config_client.json:",
+        "ruvic.s3.body": "Operations only: scheduler, policy, data_plane. If allow_insecure_ws is true (TLS at the ingress), runtime clears tls_* so the agent CA is not pinned.",
+        "section.verificacion": "Verification",
+        "ver.s1.label": "Self-test:",
+        "ver.s1.body": "robin-client-monitor --self-test must exit 0. If it fails, do not start the service.",
+        "ver.s2.label": "Logs:",
+        "ver.s2.body": "Enrollment identity with agent_id agt_… then auth_ack (authentication confirmed).",
+        "ver.s3.label": "Inventory:",
+        "ver.s3.body": "GET /api/agents with the same JWT lists the host. Empty list = a different user or no owner row.",
+        "ver.s4.label": "Command:",
+        "ver.s4.body": "POST /api/agents/{id}/execute with health_check. Invalid Ed25519 signature means signing.pub does not match the server key.",
+        "section.solucion_problemas": "Troubleshooting",
+        "tr.tls.title": "CERTIFICATE_VERIFY_FAILED during enroll",
+        "tr.tls.body": "The client is pinning a CA that did not sign public HTTPS. Remove --enroll-ca, tls_ca_cert, and any ca.crt present before enrolling against Let’s Encrypt.",
+        "tr.ed.title": "Invalid Ed25519 signature",
+        "tr.ed.body": "openssl pkey -in /certs/signing.key -pubout and the host signing.pub must share the same fingerprint. If not, remount the key or re-enroll (new token). Check enrollment/active.json.",
+        "tr.tok.title": "Token 403 / already used",
+        "tr.tok.body": "enr_… is consumed on the first successful POST /api/enroll. Mint another. If identity.json already exists in that folder, the CLI reuses the bundle and does not call the server.",
+        "tr.local.title": "The agent points at 127.0.0.1",
+        "tr.local.body": "Enrollment was done against lab. Re-enroll against the public URL (new folder or --enroll-dir).",
+        "section.faq_seguridad": "FAQ and security notes",
+        "faq.1.q": "Does the agent send the JWT over the WebSocket?",
+        "faq.1.a": "No. JWT is REST only. The socket uses an RSA signature of auth_challenge with identity.key.",
+        "faq.2.q": "Can I paste keys into config_client.json?",
+        "faq.2.a": "Not in production. If JSON and bundle disagree, enrollment/ wins. A stale JSON signs the handshake with the wrong key.",
+        "faq.3.q": "Is --enroll-insecure acceptable?",
+        "faq.3.a": "Lab only (ws://). Never in production.",
+        "faq.4.q": "Where is the 55-tool contract?",
+        "faq.4.a": "In the product docs: telemetry JSON and report widgets (OTLP points[], not result.cpu.load_avg_1)."
+      }
+    };
+  </script>
+</body>
+</html>

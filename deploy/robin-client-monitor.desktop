@@ -1,0 +1,11 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Robin Client Monitor
+Comment=Agente de endpoint RobinLogs (WebSocket/OTLP)
+Exec=/opt/robin-client-monitor/robin-client-monitor
+Icon=robin-client-monitor
+Terminal=false
+Categories=System;Monitor;Security;
+StartupNotify=false
+NoDisplay=true

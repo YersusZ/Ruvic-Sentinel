@@ -1,0 +1,64 @@
+{
+  "_comment": "Plantilla de paquete (§16). Sin secretos. El enrollment (--enroll) o Ansible rellenan identidad, URL y llaves. Monitores off.",
+  "client_name": "",
+  "tenant_id": "",
+  "agent_id": "",
+  "websocket_url": "wss://CHANGE_ME/ws/colsoft-tools",
+  "allow_insecure_ws": false,
+  "require_command_signature": true,
+  "signing_public_key": "",
+  "private_key": "",
+  "public_key": "",
+  "heartbeat_interval": 60,
+  "policy": {
+    "allowed_commands": [],
+    "allow_high_risk": false
+  },
+  "scripts_catalog": {},
+  "audit_log_path": "",
+  "max_command_rate": 20,
+  "auto_update": {},
+  "telemetry_buffer": {
+    "max_age_days": 7.0,
+    "max_file_bytes": 8388608,
+    "max_total_bytes": 1073741824
+  },
+  "tamper": {
+    "allow_rebaseline": false
+  },
+  "scheduler": {
+    "interval_seconds": 0,
+    "tools": []
+  },
+  "data_plane": {
+    "enabled": true,
+    "compression": "gzip",
+    "batch_size": 32,
+    "batch_interval_seconds": 5
+  },
+  "process_watch": { "enabled": false },
+  "service_watch": { "enabled": false },
+  "health_probes": { "interval_seconds": 0, "checks": [] },
+  "alerts": { "interval_seconds": 30, "cooldown_seconds": 300, "rules": [] },
+  "security": {
+    "fim": { "enabled": false },
+    "persistence": { "enabled": false },
+    "auth_audit": { "enabled": false },
+    "detection": { "enabled": false },
+    "dns": { "enabled": false },
+    "rootkit": { "enabled": false },
+    "cis": { "enabled": false },
+    "cve_inventory": { "enabled": false },
+    "auto_response": { "enabled": false, "actions": [] }
+  },
+  "windows": {
+    "event_log": { "enabled": false },
+    "autoruns": { "enabled": false },
+    "sysmon": { "enabled": false }
+  },
+  "linux": {
+    "auditd": { "enabled": false },
+    "systemd": { "enabled": false },
+    "netlink": { "enabled": false }
+  }
+}

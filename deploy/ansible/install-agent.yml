@@ -1,0 +1,65 @@
+# Ansible — Robin Client Monitor (§16)
+# Uso:
+#   ansible-playbook -i inventory deploy/ansible/install-agent.yml \
+#     -e robin_deb=/tmp/robin-client-monitor_0.9.0_amd64.deb \
+#     -e robin_enroll_token=TOKEN \
+#     -e robin_enroll_server=https://host:8000 \
+#     -e robin_disable_gpg_check=true
+---
+- name: Instalar Robin Client Monitor
+  hosts: robin_agents
+  become: true
+  vars:
+    robin_deb: ""
+    robin_rpm: ""
+    robin_enroll_token: ""
+    robin_enroll_server: ""
+    robin_enroll_tenant: ""
+    robin_enroll_name: "{{ inventory_hostname }}"
+    robin_skip_start: "0"
+    robin_disable_gpg_check: true
+  tasks:
+    - name: Copiar .deb
+      ansible.builtin.copy:
+        src: "{{ robin_deb }}"
+        dest: /tmp/robin-client-monitor.deb
+        mode: "0644"
+      when: robin_deb | length > 0
+
+    - name: Instalar .deb
+      ansible.builtin.apt:
+        deb: /tmp/robin-client-monitor.deb
+      environment:
+        ROBIN_ENROLL_TOKEN: "{{ robin_enroll_token }}"
+        ROBIN_ENROLL_SERVER: "{{ robin_enroll_server }}"
+        ROBIN_ENROLL_TENANT: "{{ robin_enroll_tenant }}"
+        ROBIN_ENROLL_NAME: "{{ robin_enroll_name }}"
+        ROBIN_SKIP_START: "{{ robin_skip_start }}"
+      when: robin_deb | length > 0
+
+    - name: Copiar .rpm
+      ansible.builtin.copy:
+        src: "{{ robin_rpm }}"
+        dest: /tmp/robin-client-monitor.rpm
+        mode: "0644"
+      when: robin_rpm | length > 0
+
+    - name: Instalar .rpm
+      ansible.builtin.dnf:
+        name: /tmp/robin-client-monitor.rpm
+        disable_gpg_check: "{{ robin_disable_gpg_check }}"
+        state: present
+      environment:
+        ROBIN_ENROLL_TOKEN: "{{ robin_enroll_token }}"
+        ROBIN_ENROLL_SERVER: "{{ robin_enroll_server }}"
+        ROBIN_ENROLL_TENANT: "{{ robin_enroll_tenant }}"
+        ROBIN_ENROLL_NAME: "{{ robin_enroll_name }}"
+        ROBIN_SKIP_START: "{{ robin_skip_start }}"
+      when: robin_rpm | length > 0
+
+    - name: Servicio habilitado
+      ansible.builtin.systemd:
+        name: robin-client-monitor
+        enabled: true
+        state: started
+      when: robin_skip_start != "1"

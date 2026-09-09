@@ -1,0 +1,8 @@
+#!/bin/sh
+set -e
+SERVICE="robin-client-monitor"
+if command -v systemctl >/dev/null 2>&1; then
+  systemctl stop "${SERVICE}.service" >/dev/null 2>&1 || true
+  systemctl disable "${SERVICE}.service" >/dev/null 2>&1 || true
+fi
+exit 0

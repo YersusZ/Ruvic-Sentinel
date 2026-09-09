@@ -1,0 +1,28 @@
+# Imagen con glibc ~2.28 (RHEL8 / Rocky8 / Oracle Linux 8).
+# El binario suele ejecutarse también en Ubuntu 20.04+ y distros con glibc >= la de esta imagen.
+FROM rockylinux:8
+
+RUN dnf -y install \
+      python39 \
+      python39-pip \
+      python39-devel \
+      gcc \
+      openssl-devel \
+ && dnf clean all
+
+WORKDIR /build
+COPY . .
+
+RUN python3.9 -m venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+
+RUN pip install --upgrade pip \
+ && pip install aiohttp requests cryptography pyinstaller
+
+ARG APP_NAME=robin-client-monitor
+
+RUN pyinstaller --clean --noconfirm --onefile --name "${APP_NAME}" \
+      --hidden-import colsoft_tools \
+      --hidden-import colsoft_tools.network_checks \
+      --hidden-import cryptography.hazmat.backends.openssl.backend \
+      ws_tools_client_embedded.py

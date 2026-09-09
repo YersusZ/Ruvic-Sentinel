@@ -1,0 +1,29 @@
+[Unit]
+Description=Robin Client Monitor (WebSocket agent)
+Documentation=file:///opt/robin-client-monitor/README_CLIENT.md
+After=network-online.target
+Wants=network-online.target
+StartLimitIntervalSec=86400
+StartLimitBurst=20
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/robin-client-monitor
+Environment=PYTHONUNBUFFERED=1
+# Reintento de conexión indefinido; el agente usa identidad persistente de
+# enrollment (RF-CORE-01/02) y buffer de telemetría en disco (RF-CORE-04).
+ExecStart=/opt/robin-client-monitor/robin-client-monitor --max-retries -1 --retry-delay 2
+Restart=always
+RestartSec=3
+
+# Seguridad mínima del proceso (endurecimiento del servicio)
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+# Lectura de /home y /root (authorized_keys, FIM de usuario). Sin escritura.
+ProtectHome=read-only
+ReadWritePaths=/opt/robin-client-monitor /opt/robin-client-monitor/enrollment
+
+[Install]
+WantedBy=multi-user.target

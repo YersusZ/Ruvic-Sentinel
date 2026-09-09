@@ -1,0 +1,28 @@
+#cloud-config
+# cloud-init — Robin Client Monitor (§16)
+# Adjuntá el .deb (o bajalo) y pasá el token de enrollment por instancia
+# (user-data o secret del proveedor). El token es de un solo uso.
+package_update: true
+
+write_files:
+  - path: /etc/robin-client-monitor.env
+    permissions: "0600"
+    content: |
+      ROBIN_ENROLL_TOKEN=CHANGE_ME
+      ROBIN_ENROLL_SERVER=https://CHANGE_ME:8000
+      ROBIN_ENROLL_TENANT=CHANGE_ME
+
+runcmd:
+  - |
+    set -e
+    # shellcheck disable=SC1091
+    . /etc/robin-client-monitor.env
+    DEB="/tmp/robin-client-monitor.deb"
+    # Sustituí por wget/curl a vuestro artefact store:
+    # curl -fsSL -o "$DEB" "https://artifacts.example/robin-client-monitor_0.9.0_$(dpkg --print-architecture).deb"
+    if [ -f "$DEB" ]; then
+      export ROBIN_ENROLL_TOKEN ROBIN_ENROLL_SERVER ROBIN_ENROLL_TENANT
+      apt-get install -y "$DEB"
+    fi
+    rm -f /etc/robin-client-monitor.env
+    systemctl enable --now robin-client-monitor.service
